@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Bridge Run</title>
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --wood-dark: #5d4037;
+            --wood-light: #8d6e63;
+            --jungle-green: #2e7d32;
+            --leaf-shadow: rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-image: url('assets/images/body-bg-img.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            font-family: 'Luckiest Guy', cursive;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* Landscape orientation warning for mobile */
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            #portrait-warning {
+                display: flex;
+            }
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            /* background: linear-gradient(to bottom, #87ceeb 0%, #4fc3f7 100%); */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-canvas-wrapper {
+            width: 100%;
+            height: 100%;
+            max-width: 500px;
+            /* Mobile width constraint */
+            position: relative;
+            background: transparent;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* HUD Styling */
+        .hud {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .score-board {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Minimal style */
+            background: transparent;
+            padding: 0;
+        }
+
+        .score-value {
+            font-size: 64px;
+            color: white;
+            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .coin-icon {
+            display: none;
+        }
+
+        .top-btn-group {
+            display: none;
+            /* Hide buttons to match reference exactly, or keep them if user wants settings? Reference doesn't show them clearly but I'll hide for now to match clean look */
+        }
+
+        /* Keep circular-btn just in case */
+        .circular-btn {
+            width: 45px;
+            height: 45px;
+            background: #5d4037;
+            border: 3px solid #8d6e63;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+            display: none;
+            /* Hidden by default now */
+        }
+
+        /* Screen Overlays */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            display: none;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .menu-card {
+            background: #f4e1c1;
+            padding: 40px;
+            border-radius: 30px;
+            border: 8px solid var(--wood-dark);
+            text-align: center;
+            color: var(--wood-dark);
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            -webkit-text-stroke: 1px white;
+        }
+
+        .btn-primary {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 28px;
+            border-radius: 50px;
+            font-family: 'Luckiest Guy';
+            cursor: pointer;
+            box-shadow: 0 8px 0 #e65100;
+            transition: transform 0.1s;
+        }
+
+        .btn-primary:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #e65100;
+        }
+
+        /* Instructional Text */
+        #instruction {
+            position: absolute;
+            bottom: 25%;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+
+
+        /* Hide the old menu card styling if we are doing full screen */
+        #menu-screen .menu-card {
+            background: transparent;
+            border: none;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            /* Buttons at bottom */
+            padding-bottom: 50px;
+        }
+
+        #menu-screen h1 {
+            /* If text is in image, hide this. If not, style it. */
+            /* Assuming text is in image based on typical requests, or I'll leave it invisible/removed */
+            display: none;
+        }
+
+        /* Play Button - Big Green Circle */
+        .play-btn {
+            width: 100px;
+            height: 100px;
+            background: #4CAF50;
+            border-radius: 50%;
+            border: 5px solid #388E3C;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .play-btn:active {
+            transform: scale(0.95);
+        }
+
+        .play-icon {
+            width: 0;
+            height: 0;
+            border-top: 20px solid transparent;
+            border-bottom: 20px solid transparent;
+            border-left: 35px solid white;
+            margin-left: 8px;
+            /* Optical centering */
+        }
+
+        /* Secondary Buttons Container */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        /* How To Play Button */
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            border: none;
+            border-radius: 15px;
+            padding: 12px;
+            color: white;
+            font-family: 'Luckiest Guy';
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        /* Bottom Row */
+        .settings-row {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            border: none;
+            border-radius: 15px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* Game Over Redesign */
+        #gameover-screen .menu-card {
+            background: #e0f2f1;
+            border: 8px solid #a5d6a7;
+            border-radius: 40px;
+            padding: 0;
+            width: 90%;
+            max-width: 380px;
+            overflow: hidden;
+            color: #2e7d32;
+        }
+
+        .gameover-header {
+            background: #4caf50;
+            padding: 20px;
+            color: white;
+            width: 100%;
+        }
+
+        .gameover-header h1 {
+            display: block;
+            font-size: 36px;
+            margin: 0;
+            -webkit-text-stroke: 0;
+        }
+
+        .gameover-subtitle {
+            font-size: 14px;
+            margin-top: 5px;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+
+        .gameover-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .score-row {
+            background: white;
+            border-radius: 20px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .score-row.highlight {
+            background: #fff9c4;
+            color: #795548;
+        }
+
+        .score-row span:first-child {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .score-row i {
+            font-style: normal;
+        }
+
+        .score-row b {
+            font-size: 28px;
+        }
+
+        .gameover-footer {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn-retry {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 20px;
+            font-family: 'Luckiest Guy';
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #2e7d32;
+            transition: transform 0.1s;
+        }
+
+        .btn-home {
+            background: #e8f5e9;
+            color: #4caf50;
+            border: none;
+            padding: 15px;
+            border-radius: 20px;
+            font-family: 'Luckiest Guy';
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #c8e6c9;
+            transition: transform 0.1s;
+        }
+
+        .btn-retry:active,
+        .btn-home:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 transparent;
+        }
+
+        .tip-box {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+            margin-top: 15px;
+            color: #1b5e20;
+            font-family: sans-serif;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <div id="game-canvas-wrapper" class="overlay">
+            <!-- Game Play Area (Hidden initially) -->
+            <div id="game-play-area" style="width: 100%; height: 100%; opacity: 0;"></div>
+
+            <!-- HUD (Hidden initially) -->
+            <div class="hud hidden" style="justify-content: center;">
+                <div class="score-board">
+                    <span id="score-display" class="score-value">0</span>
+                    <div class="coin-icon"></div>
+                </div>
+            </div>
+
+            <!-- Hint (Hidden initially) -->
+            <div id="instruction" class="hidden">HOLD TO GROW STICK</div>
+
+            <!-- Screens -->
+            <div id="menu-screen" class="overlay">
+                <!-- Inner container to position elements -->
+                <div class="menu-card"> <!-- Reusing class but styles overridden -->
+                    <!-- Title Image -->
+                    <img src="assets/images/twing-monkey-txt.png" alt="Twig Monkey"
+                        style="width: 80%; max-width: 300px; margin-bottom: 30px; margin-top: auto;">
+
+                    <!-- Play Button -->
+                    <div id="start-btn" class="play-btn">
+                        <div class="play-icon"></div>
+                    </div>
+
+                    <div class="menu-buttons">
+                        <!-- How to Play -->
+                        <button class="btn-secondary">
+                            <span>📖</span> How to Play
+                        </button>
+
+                        <!-- Settings Row -->
+                        <div class="settings-row">
+                            <button class="icon-btn">⚙️</button>
+                            <button class="icon-btn">🔊</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="gameover-screen" class="overlay hidden">
+                <div class="menu-card">
+                    <div class="gameover-header">
+                        <h1>GAME OVER!</h1>
+                        <div class="gameover-subtitle">🌲 JUNGLE ADVENTURE ENDS 🌲</div>
+                    </div>
+
+                    <div class="gameover-body">
+                        <div class="score-row">
+                            <span>🏆 SCORE</span>
+                            <b id="final-score">0</b>
+                        </div>
+                        <div class="score-row">
+                            <span>👑 BEST</span>
+                            <b id="best-score">0</b>
+                        </div>
+                        <div class="score-row highlight">
+                            <span>🍃 BANANAS</span>
+                            <b id="bananas-collected">+0</b>
+                        </div>
+
+                        <div class="gameover-footer">
+                            <button id="restart-btn" class="btn-retry">🔄 SWING AGAIN</button>
+                            <button id="home-btn" class="btn-home">🏠 BACK TO TREE</button>
+                        </div>
+
+                        <div class="tip-box">
+                            "Hold longer to grow your branch. Perfect timing lands you safely on the next tree!"
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js (using CDN for demonstration) -->
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+          }
+        }
+    </script>
+    <script type="module" src="src/app.js"></script>
+</body>
+
+</html>
